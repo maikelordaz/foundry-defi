@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity 0.8.19;
 
 /**
  * @title DescentralizedStableCoin
@@ -10,4 +10,6 @@ pragma solidity 0.8.20;
  * @notice Stability: Pegged to the US Dollar
  * @dev This contract is governed by DSCEngine contract, this is just the ERC20 token implementation contract
  */
-contract DescentralizedStableCoin {}
+contract DescentralizedStableCoin {
+    constructor() {}
+}
