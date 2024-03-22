@@ -20,6 +20,8 @@ contract DescentralizedStableCoin is ERC20Burnable, Ownable {
 
     constructor() ERC20("DescentralizedStableCoin", "DSC") {}
 
+    /// @dev Burn tokens from the owner's balance
+    /// @param amount The amount of tokens to burn
     function burn(uint256 amount) public override onlyOwner {
         uint256 balance = balanceOf(msg.sender);
         if (amount <= 0) {
@@ -32,10 +34,10 @@ contract DescentralizedStableCoin is ERC20Burnable, Ownable {
         super.burn(amount);
     }
 
-    function mint(
-        address to,
-        uint256 amount
-    ) external onlyOwner returns (bool) {
+    /// @dev Mint new tokens
+    /// @param to The address to mint tokens to
+    /// @param amount The amount of tokens to mint
+    function mint(address to, uint256 amount) external onlyOwner returns (bool) {
         if (amount <= 0) {
             revert DescentralizedStableCoin__NotZeroAddress();
         }
