@@ -40,6 +40,11 @@ contract DSCEngine is ReentrancyGuard {
         address indexed token,
         uint256 indexed amount
     );
+    event CollateralRedeemed(
+        address indexed user,
+        address indexed token,
+        uint256 indexed amount
+    );
 
     modifier moreThanZero(uint256 amount) {
         _moreThanZero(amount);
@@ -75,6 +80,9 @@ contract DSCEngine is ReentrancyGuard {
         i_dsc = DescentralizedStableCoin(dscAddress);
     }
 
+    /// @param tokenCollateralAddress The address of the token to be deposited as collateral
+    /// @param amountCollateral The amount of the token to be deposited as collateral
+    /// @param amountDscToMint The amount of DSC to mint
     function depositCollateralAndMintDsc(
         address tokenCollateralAddress,
         uint256 amountCollateral,
@@ -84,11 +92,16 @@ contract DSCEngine is ReentrancyGuard {
         mintDsc(amountDscToMint);
     }
 
-    function redeemCollateralForDsc() external {}
-
-    function redeemCollateral() external {}
-
-    function burnDsc() external {}
+    /// @param tokenCollateralAddress The address of the token to be redeemed
+    /// @param amountDscToBurn The amount of DSC to burn
+    function redeemCollateralForDsc(
+        address tokenCollateralAddress,
+        uint256 amountCollateral,
+        uint256 amountDscToBurn
+    ) external {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(tokenCollateralAddress, amountCollateral); // The heath factor will be checked in the redeemCollateral function
+    }
 
     function liquidate() external {}
 
@@ -171,6 +184,47 @@ contract DSCEngine is ReentrancyGuard {
         if (!minted) {
             revert DSCEngine__MintFailed();
         }
+    }
+
+    /// @param tokenCollateralAddress The address of the token to be redeemed
+    /// @param amountCollateral The amount of the token to be redeemed
+    function redeemCollateral(
+        address tokenCollateralAddress,
+        uint256 amountCollateral
+    ) public moreThanZero(amountCollateral) nonReentrant {
+        s_collateralDeposited[msg.sender][
+            tokenCollateralAddress
+        ] -= amountCollateral;
+
+        emit CollateralRedeemed(
+            msg.sender,
+            tokenCollateralAddress,
+            amountCollateral
+        );
+
+        bool success = IERC20(tokenCollateralAddress).transfer(
+            msg.sender,
+            amountCollateral
+        );
+
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+
+        _revertIfHeathFactorIsBroken(msg.sender);
+    }
+
+    /// @param amount The amount of DSC to burn
+    function burnDsc(uint256 amount) public moreThanZero(amount) {
+        s_DSCMinted[msg.sender] -= amount;
+        bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
+
+        // This condition is a backup. If something fails should revert on the transferFrom call
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+        i_dsc.burn(amount);
+        _revertIfHeathFactorIsBroken(msg.sender);
     }
 
     /// @param user The address of the user
