@@ -190,6 +190,19 @@ contract DSCEngine is ReentrancyGuard {
         return s_collateralTokens;
     }
 
+    /// @param user The address of the user
+    /// @return totalDscMinted The total DSC minted by the user
+    /// @return collateralValueInUsd The total collateral value in USD
+    function getAccountInformation(
+        address user
+    )
+        external
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
+    }
+
     /// @param tokenCollateralAddress The address of the token to be deposited as collateral
     /// @param amountCollateral The amount of the token to be deposited as collateral
     function depositCollateral(
