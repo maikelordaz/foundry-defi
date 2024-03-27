@@ -112,7 +112,7 @@ contract DSCEngine is ReentrancyGuard {
             msg.sender,
             msg.sender
         );
-        revertIfHealthFactorIsBroken(msg.sender);
+        _revertIfHealthFactorIsBroken(msg.sender);
     }
 
     /// @param tokenCollateralAddress The address of the token to be redeemed
@@ -128,13 +128,13 @@ contract DSCEngine is ReentrancyGuard {
             msg.sender
         );
 
-        _revertIfHeathFactorIsBroken(msg.sender);
+        _revertIfHealthFactorIsBroken(msg.sender);
     }
 
     /// @param amount The amount of DSC to burn
     function burnDsc(uint256 amount) external moreThanZero(amount) {
         _burnDsc(amount, msg.sender, msg.sender);
-        _revertIfHeathFactorIsBroken(msg.sender);
+        _revertIfHealthFactorIsBroken(msg.sender);
     }
 
     /// @param collateral The address of the collateral token
@@ -177,7 +177,7 @@ contract DSCEngine is ReentrancyGuard {
         if (finalUserHealthFactor <= startingUserHealthFactor) {
             revert DSCEngine__HealthFactorNotImproved();
         }
-        _revertIfHeathFactorIsBroken(msg.sender);
+        _revertIfHealthFactorIsBroken(msg.sender);
     }
 
     /// @param amountDscToMint The amount of DSC to mint
@@ -311,7 +311,7 @@ contract DSCEngine is ReentrancyGuard {
     /// @notice must have more collateral than minimum threshold
     function _mintDsc(uint256 _amountDscToMint) internal {
         s_DSCMinted[msg.sender] += _amountDscToMint;
-        _revertIfHeathFactorIsBroken(msg.sender);
+        _revertIfHealthFactorIsBroken(msg.sender);
 
         bool minted = i_dsc.mint(msg.sender, _amountDscToMint);
         if (!minted) {
@@ -448,15 +448,8 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     /// @param _user The address of the user
-    function _revertIfHeathFactorIsBroken(address _user) internal view {
+    function _revertIfHealthFactorIsBroken(address _user) internal view {
         uint256 userHealthFactor = _healthFactor(_user);
-        if (userHealthFactor < MIN_HEALTH_FACTOR) {
-            revert DSCEngine__BreaksHealthFactor(userHealthFactor);
-        }
-    }
-
-    function revertIfHealthFactorIsBroken(address user) internal view {
-        uint256 userHealthFactor = _healthFactor(user);
         if (userHealthFactor < MIN_HEALTH_FACTOR) {
             revert DSCEngine__BreaksHealthFactor(userHealthFactor);
         }

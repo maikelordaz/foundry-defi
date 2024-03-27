@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.19;
+
+import {DeployDSC} from "../../../scripts/DeployDSC.s.sol";
+import {DSCEngine} from "../../../src/DSCEngine.sol";
+import {DescentralizedStableCoin} from "../../../src/DescentralizedStableCoin.sol";
+import {HelperConfig} from "../../../scripts/HelperConfig.s.sol";
+import {ERC20Mock} from "openzeppelin/mocks/ERC20Mock.sol";
+import {MockV3Aggregator} from "../../mocks/MockV3Aggregator.sol";
+import {MockMoreDebtDSC} from "../../mocks/MockMoreDebtDSC.sol";
+import {MockFailedMintDSC} from "../../mocks/MockFailedMintDSC.sol";
+import {MockFailedTransferFrom} from "../../mocks/MockFailedTransferFrom.sol";
+import {MockFailedTransfer} from "../../mocks/MockFailedTransfer.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {StdCheats} from "forge-std/StdCheats.sol";
+
+contract DSCEngineHealthFactorTest is StdCheats, Test {
+    event CollateralRedeemed(
+        address indexed redeemFrom,
+        address indexed redeemTo,
+        address token,
+        uint256 amount
+    ); // if redeemFrom != redeemedTo, then it was liquidated
+
+    DSCEngine public engine;
+    DescentralizedStableCoin public dsc;
+    HelperConfig public helperConfig;
+
+    address public ethUsdPriceFeed;
+    address public btcUsdPriceFeed;
+    address public weth;
+    address public wbtc;
+    uint256 public deployerKey;
+    address[] public tokenAddresses;
+    address[] public feedAddresses;
+
+    uint256 amountToMint = 100 ether;
+    address public USER = address(1);
+
+    uint256 public constant AMOUNT_COLLATERAL = 10 ether;
+    uint256 public constant STARTING_USER_BALANCE = 10 ether;
+    uint256 public constant MIN_HEALTH_FACTOR = 1e18;
+    uint256 public constant LIQUIDATION_THRESHOLD = 50;
+
+    // Liquidation
+    address public liquidator = makeAddr("liquidator");
+    uint256 public collateralToCover = 20 ether;
+
+    function setUp() external {
+        DeployDSC deployer = new DeployDSC();
+        (dsc, engine, helperConfig) = deployer.run();
+        (
+            ethUsdPriceFeed,
+            btcUsdPriceFeed,
+            weth,
+            wbtc,
+            deployerKey
+        ) = helperConfig.activeNetworkConfig();
+        if (block.chainid == 31337) {
+            vm.deal(USER, STARTING_USER_BALANCE);
+        }
+
+        ERC20Mock(weth).mint(USER, STARTING_USER_BALANCE);
+        ERC20Mock(wbtc).mint(USER, STARTING_USER_BALANCE);
+    }
+
+    modifier depositedCollateralAndMintedDsc() {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(engine), AMOUNT_COLLATERAL);
+        engine.depositCollateralAndMintDsc(
+            weth,
+            AMOUNT_COLLATERAL,
+            amountToMint
+        );
+        vm.stopPrank();
+        _;
+    }
+
+    function testProperlyReportsHealthFactor()
+        public
+        depositedCollateralAndMintedDsc
+    {
+        uint256 expectedHealthFactor = 100 ether;
+        uint256 healthFactor = engine.getHealthFactor(USER);
+        // $100 minted with $20,000 collateral at 50% liquidation threshold
+        // means that we must have $200 collatareral at all times.
+        // 20,000 * 0.5 = 10,000
+        // 10,000 / 100 = 100 health factor
+        assertEq(healthFactor, expectedHealthFactor);
+    }
+
+    function testHealthFactorCanGoBelowOne()
+        public
+        depositedCollateralAndMintedDsc
+    {
+        int256 ethUsdUpdatedPrice = 18e8; // 1 ETH = $18
+        // Rememeber, we need $200 at all times if we have $100 of debt
+
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatedPrice);
+
+        uint256 USERHealthFactor = engine.getHealthFactor(USER);
+        // 180*50 (LIQUIDATION_THRESHOLD) / 100 (LIQUIDATION_PRECISION) / 100 (PRECISION) = 90 / 100 (totalDscMinted) = 0.9
+        assert(USERHealthFactor == 0.9 ether);
+    }
+}
