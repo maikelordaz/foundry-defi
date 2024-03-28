@@ -105,7 +105,10 @@ contract DSCEngineGettersTest is StdCheats, Test {
         ERC20Mock(weth).approve(address(engine), AMOUNT_COLLATERAL);
         engine.depositCollateral(weth, AMOUNT_COLLATERAL);
         vm.stopPrank();
-        uint256 collateralBalance = engine.getCollateralDeposited(USER, weth);
+        uint256 collateralBalance = engine.getCollateralBalanceOfUser(
+            USER,
+            weth
+        );
         assertEq(collateralBalance, AMOUNT_COLLATERAL);
     }
 

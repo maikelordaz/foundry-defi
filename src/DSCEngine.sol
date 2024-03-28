@@ -5,6 +5,7 @@ pragma solidity 0.8.19;
 import {ReentrancyGuard} from "openzeppelin/security/ReentrancyGuard.sol";
 import {DescentralizedStableCoin} from "./DescentralizedStableCoin.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {OracleLib} from "./libraries/OracleLib.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
@@ -21,6 +22,8 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__MintFailed();
     error DSCEngine__HealthFactorOk();
     error DSCEngine__HealthFactorNotImproved();
+
+    using OracleLib for AggregatorV3Interface;
 
     uint256 private constant LIQUIDATION_PRECISION = 100;
     uint256 private constant LIQUIDATION_THRESHOLD = 50;
@@ -228,7 +231,7 @@ contract DSCEngine is ReentrancyGuard {
     /// @param user The address of the user
     /// @param token The address of the token
     /// @return The amount of collateral deposited
-    function getCollateralDeposited(
+    function getCollateralBalanceOfUser(
         address user,
         address token
     ) external view returns (uint256) {
@@ -438,7 +441,7 @@ contract DSCEngine is ReentrancyGuard {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(
             s_priceFeeds[_token]
         );
-        (, int256 price, , , ) = priceFeed.latestRoundData();
+        (, int256 price, , , ) = priceFeed.staleCheckLatestRoundData();
 
         // 1 ETH = 1000$
         // The returned value from CL will be 1000 * 1e8
@@ -481,7 +484,7 @@ contract DSCEngine is ReentrancyGuard {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(
             s_priceFeeds[_token]
         );
-        (, int256 price, , , ) = priceFeed.latestRoundData();
+        (, int256 price, , , ) = priceFeed.staleCheckLatestRoundData();
 
         return
             (_usdAmountInWei * PRECISION) /
