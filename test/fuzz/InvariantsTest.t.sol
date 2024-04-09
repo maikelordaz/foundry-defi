@@ -5,7 +5,7 @@
 
 // 2. Getters should never revert
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";

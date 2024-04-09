@@ -1,0 +1,59 @@
+name: Upgrade ABIs
+
+on: pull_request
+
+env:
+  ETHERSCAN_API_KEY: ${{secrets.ETHERSCAN_API_KEY}}
+  RPC_URL: ${{secrets.SEPOLIA_RPC_URL}}
+  PRIVATE_KEY: ${{secrets.PRIVATE_KEY}}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Determine Branch Name
+        id: set_branch
+        run: |
+          branch_name=$(echo "${{ github.event.pull_request.head.ref }}")
+          echo "$branch_name"
+          echo "branch=$branch_name" >> $GITHUB_OUTPUT
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge Build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      - name: Fetch repository
+        run: |
+          git fetch
+
+      - name: Deploy contracts on Sepolia
+        run: forge script scripts/DeplyDSC.s.sol:DeployDSC --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
+
+      - name: Commit ABIs
+        env:
+          COMMIT_MSG: "ci(deployments): upgrade ABIs"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BRANCH_REF: "${{ steps.set_branch.outputs.branch }}"
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "Github Actions"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "${COMMIT_MSG}"; git push -f origin HEAD:${BRANCH_REF})
