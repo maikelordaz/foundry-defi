@@ -1,0 +1,31 @@
+name: Run Tests on PR Creation
+
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge Build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      - name: Run Forge Tests
+        run: |
+          forge test -vvv
+        id: test
