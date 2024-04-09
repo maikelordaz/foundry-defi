@@ -43,7 +43,7 @@ jobs:
           git fetch
 
       - name: Deploy contracts on Sepolia
-        run: make deploy ARGS="--network sepolia"
+        run: forge script scripts/DeplyDSC.s.sol:DeployDSC --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
 
       - name: Commit ABIs
         env:
