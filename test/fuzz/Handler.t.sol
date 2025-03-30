@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
@@ -93,10 +93,10 @@ contract Handler is Test {
         timesMintIsCalled++;
     }
 
-    // function updateCollateralPrice(uint96 newPrice) public {
-    //     int256 newPriceInt = int256(uint256(newPrice));
-    //     ethUsdPriceFeed.updateAnswer(newPriceInt);
-    // }
+    function updateCollateralPrice(uint96 newPrice) public {
+        int256 newPriceInt = int256(uint256(newPrice));
+        ethUsdPriceFeed.updateAnswer(newPriceInt);
+    }
 
     // // Redeem collateral Handler
     // function redeemCollateral(
